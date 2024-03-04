@@ -97,3 +97,57 @@ gatk --java-options "-Xmx4g" BuildBamIndex
 -I ${dedup_bam.baseName}_recalibrated.bam \
 -O ${dedup_bam.baseName}_recalibrated.bam.bai //indexing the recalibrated file
 ```
+
+**HaplotypeCaller — Variant Call tool**
+
+Particularly made for germline variations found in WES or WGS data. Generates precisely accurate vcf files. Uses joint calling, handling many samples simultaneously.
+
+```jsx
+gatk HaplotypeCaller \
+-R ${ref} \
+-I ${applyed_bqsr_bam} \
+-O htvc_variants.vcf
+```
+
+There are other tools that could be used in WGS or WES pipelines for variant calling. One of the major example is **DeepVariant.** Deepvariant ****aims to accurately identify variants in WGS and WES data and do its own variant filtration and recalibration.
+
+```jsx
+/opt/deepvariant/bin/run_deepvariant \
+        --model_type=WGS \
+        --ref=${ref} \
+        --reads=${applyed_bqsr_bam} \
+        --output_vcf=dv_variants.vcf \
+        --num_shards=${task.cpus}
+```
+
+# **Step 3: Preparing Variant File for Annotation**
+
+There are 2 major steps for filtration and recalibration:
+
+1. Variant Recalibrator & Apply VQSR
+2. Variant Filtration 
+
+For recalibration it needs resources to recalibrator with a truth data set which can be retrieved from GATK google cloud database. These truth datasets includes 1000GP, HapMap, dbSNP, OMNI projects and more.
+
+```jsx
+ gatk VariantRecalibrator \
+            -R ${ref} \
+            -V ${variants} \
+            --resource:omni,known=false,training=true,truth=false,prior=12.0 ${omni} \
+            --resource:hapmap,known=false,training=true,truth=true,prior=15.0 ${hapmap} \
+            --resource:1000G,known=false,training=true,truth=false,prior=10.0 ${thousandG} \
+            --resource:dbsnp,known=true,training=false,truth=false,prior=2.0 ${dbsnp} \
+            -an QD -an MQ -an MQRankSum -an ReadPosRankSum -an FS -an SOR \
+            -mode BOTH \
+            -O ${variants.baseName}_output.recal \
+            --tranches-file ${variants.baseName}_output.tranches
+
+    gatk ApplyVQSR \
+        -R ${ref} \
+        -V ${variants}\
+        --recal-file ${var_recal} \
+        --tranches-file ${tranches} \
+        -mode BOTH \
+        -ts-filter-level 99.0 \
+        -O ${variants.baseName}_recalibrated_variant.vcf
+```
