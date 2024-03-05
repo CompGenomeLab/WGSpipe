@@ -31,13 +31,13 @@ read_pairs_ch = Channel.fromFilePairs(params.reads, checkIfExists:true)
 process fastqc {
   tag "Fastqc process underway"
 
-  publishDir "${params.outdir}/quality-control-${sample}/", mode: 'copy'
+  publishDir "${params.outdir}/fastqc_reports/", mode: 'copy'
 
   input:
   tuple val(sample), path(reads)
 
   output:
-  path("*_fastqc.{zip,html}"), emit:fastqc_reports
+  path("*_fastqc.{zip,html}"), emit:fastqc_files
 
   script:
   """
@@ -49,16 +49,16 @@ process MULTIQC {
   tag "MULTIQC process underway"
 
   publishDir "${params.outdir}/multiqc/", mode: 'copy'
-
-  input:
-  tuple val(sample), path(fastqc_reports)
   
+  input:
+  tuple val(sample), path(reports)
+
   output:
-  path("${sample}_multiqc_report.html")
+  path("*.html")
 
   script:
   """
-  multiqc ${fastqc_reports} --title ${sample} .
+  multiqc ${reports}
   """
 }
 
@@ -607,6 +607,7 @@ workflow {
 
     read_pairs_ch.view()
     fastqc(read_pairs_ch)
+    MULTIQC(fastqc.out.fastqc_files)
     
     BWA_INDEX(params.ref)
     BWA_ALIGNER(params.ref, BWA_INDEX.out.index, read_pairs_ch)
