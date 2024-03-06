@@ -151,3 +151,58 @@ For recalibration it needs resources to recalibrator with a truth data set which
         -ts-filter-level 99.0 \
         -O ${variants.baseName}_recalibrated_variant.vcf
 ```
+
+Variant Filtration going to be done after recalibrator process with proper parameters that is accepted by the GATK best practices.
+
+```jsx
+gatk VariantFiltration \
+            -R ${ref} \
+            -V ${recal_variants} \
+            -O htvc_variant_filtered.vcf \
+            -filter-name "QD_filter" -filter "QD < 2.0" \
+            -filter-name "FS_filter" -filter "FS > 60.0" \
+            -filter-name "MQ_filter" -filter "MQ < 40.0" \
+            -filter-name "SOR_filter" -filter "SOR > 4.0" \
+            -filter-name "MQRankSum_filter" -filter "MQRankSum < -12.5" \
+            -filter-name "ReadPosRankSum_filter" -filter "ReadPosRankSum < -8.0" \
+```
+
+After processing the vcf file variants will be selected with Select Variants tool provided by GATK.
+
+```jsx
+gatk SelectVariants -R ${ref} -V ${variants} \
+--select-type-to-include SNP \ //SNP, INDEL, or SNV
+-O htvc_snp_filtered_variants.vcf
+```
+
+# STEP 4: ANNOTATING VARIANT FILE
+
+Annotation can be done using various annotation tools: Annovar, Funcotator, or SnpEff. For this pipeline Annovar and Funcotator were included for comparison of accuracy of the annotation tools. 
+
+For both tool various truth data sets were included. You can change them according to your purpose. 
+
+**Funcotator:**
+
+```jsx
+  gatk Funcotator \
+    -R ${reference} \
+    -V ${variant}\
+    -O annotation.vcf \
+    --output-file-format VCF \
+    --data-sources-path ${launchDir}/funcotator_data/funcotator_dataSources.v1.8.hg38.20230908g \
+    --ref-version hg38
+```
+
+**ANNOVAR:**
+
+```jsx
+  table_annovar.pl ${variant} ${launchDir}/humandb/ \
+        --buildver hg38 \
+        --out annovar \
+        --remove \
+        --protocol refGene,gnomad_genome,gnomad_exome,avsnp150,clinvar_20221231 \
+        --operation g,f,f,f,f \
+        --nastring . \
+        --vcfinput \
+        --thread ${task.cpus}
+```
