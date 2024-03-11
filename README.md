@@ -22,6 +22,21 @@ To evaluate your analysis to pass to further process go to this website below:
 
 [Index of /projects/fastqc/Help](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/Help/)
 
+To check quality in a more detailed manner **multiqc** is used.
+
+```jsx
+multiqc ${directory or files}
+```
+
+Trimming step is proceed with **fastp** tool**.** Commonly default parameters were used, but can add specific parameters. Fastp have single end and paired end options.
+
+```jsx
+    fastp --in1 ${reads[0]} --in2 ${reads[1]} \
+    --thread ${task.cpus} \
+    --out1 ${sample}_trimmed_1.fastq --out2 ${sample}_trimmed_2.fastq \
+    -j ${sample}_fastp.json -h ${sample}_fastp.html
+```
+
 # Step 1: Sorting and Alignment
 
 Download a reference hg38 WGS data and other additional datas from google cloud provided by GATK:
