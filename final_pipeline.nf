@@ -17,6 +17,10 @@ params.hapmap_idx = params.genomes[params.genome]?.hapmap_idx
 params.omni = params.genomes[params.genome]?.omni
 params.omni_idx = params.genomes[params.genome]?.omni_idx
 
+params.benchmark = "${launchDir}/new_data/HG003_GRCh38_1_22_v4.2.1_benchmark.vcf.gz"
+params.bench_idx = "${launchDir}/new_data/HG003_GRCh38_1_22_v4.2.1_benchmark.vcf.gz.tbi"
+params.bench_bed = "${launchDir}/new_data/HG003_GRCh38_1_22_v4.2.1_benchmark_noinconsistent.bed"
+
 log.info """\
       WGS PİPELİNE
 ================================
@@ -62,22 +66,6 @@ process MULTIQC {
   """
 }
 
-process TRIM{
-    tag "Trimming fastq files"
-    publishDir "${params.outdir}/trimming-${sample}/", mode: 'copy'
-
-    input:
-    tuple val(sample), path(reads)
-
-    output:
-    path("*_val_{1,2}.fq.gz"), emit:trim_reads
-
-    script:
-    """
-    trim_galore --phred33 -j ${task.cpus} -q ${params.minPhredScore} --length ${params.minLength} --paired ${reads}  -o ${params.outdir}/trimming-${sample}
-    """
-}
-
 process BWA_INDEX {
     tag "Refrence Indexing by BWA is underway"
     publishDir "${params.outdir}/bwa-index/", mode: 'copy'
@@ -94,6 +82,29 @@ process BWA_INDEX {
     """
 }
 
+process TRIM_FASTP{
+    tag "Trimming with fastp process underway"
+
+    publishDir "${params.outdir}/fastp_trimmed/", mode: 'copy'
+
+    input:
+    tuple val(sample), path(reads)
+
+    output:
+    tuple val(sample), path("${sample}_trimmed_1.fastq"), path("${sample}_trimmed_2.fastq"), emit: trimmed
+    tuple val(sample), path('*.json'), emit: json
+    tuple val(sample), path('*.html'), emit: html
+
+    script:
+    """
+    fastp --in1 ${reads[0]} --in2 ${reads[1]} \
+    --thread ${task.cpus} \
+    --detect_adapter_for_pe \
+    --out1 ${sample}_trimmed_1.fastq --out2 ${sample}_trimmed_2.fastq \
+    -j ${sample}_fastp.json -h ${sample}_fastp.html
+    """
+}
+
 process BWA_ALIGNER { //need CPU and memory
 
     tag "BWA Alignment is underway"
@@ -104,7 +115,6 @@ process BWA_ALIGNER { //need CPU and memory
     path ref
     path index
     tuple val(sample), path(reads)
-
 
     output:
     path "*.sam", emit: aligned
@@ -260,7 +270,9 @@ process DEEPVARIANT {
         --ref=${ref} \
         --reads=${applyed_bqsr_bam} \
         --output_vcf=dv_variants.vcf \
-        --num_shards=${task.cpus}
+        --num_shards=${task.cpus} \
+        --regions chr20 \
+
     """
 }
 
@@ -603,14 +615,45 @@ process ANNOVAR_DV {
     """
 }
 
-workflow {
+process process_happy{
+    publishDir "${params.outdir}/compare_w_happy/", mode: "copy"
+
+    tag {vcf_file.getBaseName()}
+
+    input:
+    path ref
+    path fasta_index //
+    path refvcf //benchmark
+    path refindex //benchmark index
+    path refvcf_bed
+    path vcf_file //my vcf
+
+    output:
+    tuple val("${vcf_file.BaseName()}"), path("${vcf_file.BaseName()}.*") 
+
+    """
+    /opt/hap.py/bin/hap.py \
+    ${refvcf} ${vcf_file} \
+    -f ${refvcf_bed} \
+    -r ${ref} \
+    --engine=vcfeval \
+    --preprocess-truth \
+    -o ${vcf_file.BaseName()}
+    --pass-only \
+    -l chr20
+    """
+}
+
+workflow pipeline {
 
     read_pairs_ch.view()
     fastqc(read_pairs_ch)
+    fastqc.out.fastqc_files.view()
     MULTIQC(fastqc.out.fastqc_files)
     
     BWA_INDEX(params.ref)
-    BWA_ALIGNER(params.ref, BWA_INDEX.out.index, read_pairs_ch)
+    TRIM_FASTP(read_pairs_ch)
+    BWA_ALIGNER(params.ref, BWA_INDEX.out.index, TRIM_FASTP.out.trimmed)
     SAM_BAM(BWA_ALIGNER.out.aligned)
 
     MARK_DUP(SAM_BAM.out.bam)
@@ -642,6 +685,25 @@ workflow {
     ANNOVAR_HTVC(params.ref, params.fasta_index, params.dict, MERGE_VCFS_HTVC.out.htvc_merged, MERGE_VCFS_HTVC.out.htvc_merged_idx)
     ANNOVAR_DV(params.ref, params.fasta_index, params.dict,  MERGE_VCFS_DV.out.dv_merged, MERGE_VCFS_DV.out.dv_merged_idx)
 
+    process_happy(params.ref, params.fasta_index, params.benchmark, params.bench_idx, params.bench_bed, DEEPVARIANT.out.dv)
+
+}
+
+workflow case_study{
+
+    params.bam = "/cta/users/baharsevgin/test/input/HG003.novaseq.pcr-free.35x.dedup.grch38_no_alt.chr20.bam"
+    params.index = "/cta/users/baharsevgin/test/input/HG003.novaseq.pcr-free.35x.dedup.grch38_no_alt.chr20.bam.bai"
+    params.outdir = "${launchDir}/case-study" 
+
+    
+    DEEPVARIANT(params.ref, params.bam, params.index, params.fasta_index, params.dict)
+    process_happy(params.ref, params.fasta_index, params.benchmark, params.bench_idx, params.bench_bed, DEEPVARIANT.out.dv)
+
+}
+
+workflow {
+    pipeline()
+    case_study()
 }
 
 
