@@ -1,6 +1,5 @@
-params.genome = 'hg38' // Specify the genome name here
+params.genome = 'hg38' 
 
-// Load parameters for the selected genome
 params.ref = params.genomes[params.genome]?.ref
 params.reads = params.genomes[params.genome]?.reads
 params.site = params.genomes[params.genome]?.site
@@ -16,10 +15,14 @@ params.hapmap = params.genomes[params.genome]?.hapmap
 params.hapmap_idx = params.genomes[params.genome]?.hapmap_idx
 params.omni = params.genomes[params.genome]?.omni
 params.omni_idx = params.genomes[params.genome]?.omni_idx
+params.interval = params.genomes[params.genome]?.interval
+params.indel = params.genomes[params.genome]?.indel
+params.indel_idx = params.genomes[params.genome]?.indel_idx
 
 params.benchmark = "${launchDir}/new_data/HG003_GRCh38_1_22_v4.2.1_benchmark.vcf.gz"
 params.bench_idx = "${launchDir}/new_data/HG003_GRCh38_1_22_v4.2.1_benchmark.vcf.gz.tbi"
 params.bench_bed = "${launchDir}/new_data/HG003_GRCh38_1_22_v4.2.1_benchmark_noinconsistent.bed"
+
 
 log.info """\
       WGS PİPELİNE
@@ -89,7 +92,8 @@ process TRIM_FASTP{
 
     input:
     tuple val(sample), path(reads)
-
+    
+    
     output:
     tuple val(sample), path("${sample}_trimmed_1.fastq"), path("${sample}_trimmed_2.fastq"), emit: trimmed
     tuple val(sample), path('*.json'), emit: json
@@ -98,8 +102,8 @@ process TRIM_FASTP{
     script:
     """
     fastp --in1 ${reads[0]} --in2 ${reads[1]} \
-    --thread ${task.cpus} \
     --detect_adapter_for_pe \
+    --thread ${task.cpus} \
     --out1 ${sample}_trimmed_1.fastq --out2 ${sample}_trimmed_2.fastq \
     -j ${sample}_fastp.json -h ${sample}_fastp.html
     """
@@ -136,11 +140,13 @@ process SAM_BAM {
     output:
     path "*_aligned.bam"
     path "*_sorted_aligned.bam", emit: bam
+    path "*bai", emit: bam_bai
 
     script:
     """
     samtools view -bS ${sam_file} -o ${sam_file.baseName}_aligned.bam
     samtools sort -@ ${task.cpus} ${sam_file.baseName}_aligned.bam -o ${sam_file.baseName}_sorted_aligned.bam
+    samtools index ${sam_file.baseName}_aligned.bam
     """
 }
 
@@ -151,15 +157,17 @@ process MARK_DUP {
 
     input:
     path bam_file
+    path bam_file_idx    
 
     output:
     path "*_dedup.bam", emit: dedup_bam
     path('*bai') , emit: bai
     path('*sbi') , emit: sbi
-
+    path("${bam_file.baseName}_marked_dup_metrics.txt")
+    
     script:
     """
-    gatk MarkDuplicatesSpark -I ${bam_file} -O ${bam_file.baseName}_dedup.bam --remove-sequencing-duplicates --conf 'spark.executor.cores=${task.cpus}'
+    gatk MarkDuplicatesSpark -I ${bam_file} -O ${bam_file.baseName}_dedup.bam -M ${bam_file.baseName}_marked_dup_metrics.txt --remove-sequencing-duplicates --conf 'spark.executor.cores=${task.cpus}'
     """
 }
 
@@ -169,18 +177,29 @@ process BASE_RECAP {
 
     input:
     path dedup_bam
+    path dedup_bam_idx
     path ref
     path fasta_index
     path dict
     path sites
     path sites_tbi
+    path interval
+    path dbsnp
+    path dbsnp_idx
+    path indel
+    path indel_idx
 
     output:
     path "*_recal_data.table", emit:table
 
     script:
     """
-    gatk BaseRecalibratorSpark -I ${dedup_bam} -R ${ref}  --known-sites ${sites} -O ${dedup_bam.baseName}_recal_data.table
+    gatk BaseRecalibratorSpark -I ${dedup_bam} -R ${ref} \
+     --known-sites ${sites} \
+     --known-sites ${dbsnp} \
+     --known-sites ${indel}  \
+     --intervals ${interval} \
+     -O ${dedup_bam.baseName}_recal_data.table
     """
 }
 
@@ -202,33 +221,11 @@ process applyBQSR {
     script:
     """
     gatk ApplyBQSR -I ${dedup_bam} -R ${ref}  --bqsr-recal-file ${table} -O ${dedup_bam.baseName}_recalibrated.bam
-
+    
     gatk --java-options "-Xmx4g" BuildBamIndex -I ${dedup_bam.baseName}_recalibrated.bam -O ${dedup_bam.baseName}_recalibrated.bam.bai
     """
 }
 
-process SUMMARY_METRICS {
-
-    tag "Evaluating overall quality of the alignments"
-    publishDir "${params.outdir}/SummeryMetrics", mode: 'copy'
-
-    input:
-    path ref
-    path applyed_bqsr_bam
-
-    output:
-    path ('alignment_metrics.txt'), emit:Metrics
-    path ('insert_size_metrics.txt'), emit:InsertSize
-    path ('histogram.pdf'),  emit:histogram
-
-    script:
-    """
-    gatk CollectAlignmentSummaryMetrics R=${ref} I=${applyed_bqsr_bam} O=alignment_metrics.txt
-    gatk CollectInsertSizeMetrics INPUT=${applyed_bqsr_bam} OUTPUT=insert_size_metrics.txt \
-    HISTOGRAM_FILE=histogram.pdf
-    """
-
-}
 
 process HAPLOTYPECALLER {
     tag "Executing HaplotypeCaller"
@@ -239,13 +236,15 @@ process HAPLOTYPECALLER {
     path applyed_bqsr_bam
     path fasta_index
     path dict
+    path dbsnp
+    path dbsnp_idx
 
     output:
     path('htvc_variants.vcf'), emit:htvc
 
     script:
     """
-    gatk HaplotypeCaller -R ${ref} -I ${applyed_bqsr_bam} -O htvc_variants.vcf
+    gatk HaplotypeCaller -R ${ref} -I ${applyed_bqsr_bam} -D ${dbsnp} -O htvc_variants.vcf
     """
 }
 
@@ -270,9 +269,8 @@ process DEEPVARIANT {
         --ref=${ref} \
         --reads=${applyed_bqsr_bam} \
         --output_vcf=dv_variants.vcf \
-        --num_shards=${task.cpus} \
         --regions chr20 \
-
+        --num_shards=${task.cpus}
     """
 }
 
@@ -315,6 +313,9 @@ process VAR_RECAL {
     """
 }
 
+
+
+//applyed the variant recalibration table to the variants.vcf file that constructed by haplotype
 process apply_VQSR {
     tag "Applying Variant Recalibration"
     publishDir "${params.outdir}/haplotypecaller", mode: 'copy'
@@ -345,6 +346,9 @@ process apply_VQSR {
     """
 }
 
+
+
+//according to certain parameters the recalibrated vcf file is filtered
 process VARIANT_FILTER {
 
     publishDir "${params.outdir}/haplotypecaller", mode: 'copy'
@@ -376,6 +380,8 @@ process VARIANT_FILTER {
     """
 }
 
+
+//selecting SNP from filtered vcf file
 process SNP {
     tag "Selecting SNP variants"
 
@@ -437,6 +443,7 @@ process SNP_DV {
     """
 }
 
+//selecting INDEL from filtered vcf file
 process INDEL_DV {
     tag "Selecting INDEL variants"
 
@@ -585,8 +592,9 @@ process ANNOVAR_HTVC{
     """
 }
 
+
 process ANNOVAR_DV {
-    tag "Annotating dv variants with ANNOVAR"
+    tag "Annotating dv variants with ANNOVAR" 
     publishDir "${params.outdir}/annovar_dv", mode: 'copy'
 
     input:
@@ -629,7 +637,7 @@ process process_happy{
     path vcf_file //my vcf
 
     output:
-    tuple val("${vcf_file.BaseName()}"), path("${vcf_file.BaseName()}.*") 
+    tuple val("${vcf_file.getBaseName()}"), path("${vcf_file.getBaseName()}.*") 
 
     """
     /opt/hap.py/bin/hap.py \
@@ -638,7 +646,7 @@ process process_happy{
     -r ${ref} \
     --engine=vcfeval \
     --preprocess-truth \
-    -o ${vcf_file.BaseName()}
+    -o ${vcf_file.getBaseName()} \
     --pass-only \
     -l chr20
     """
@@ -653,23 +661,22 @@ workflow pipeline {
     
     BWA_INDEX(params.ref)
     TRIM_FASTP(read_pairs_ch)
-    BWA_ALIGNER(params.ref, BWA_INDEX.out.index, TRIM_FASTP.out.trimmed)
+    BWA_ALIGNER(params.ref, BWA_INDEX.out.index, TRIM_FASTP.out.trimmed)    
     SAM_BAM(BWA_ALIGNER.out.aligned)
 
-    MARK_DUP(SAM_BAM.out.bam)
-    BASE_RECAP(MARK_DUP.out.dedup_bam, params.ref, params.fasta_index, params.dict, params.site, params.site_idx)
+    MARK_DUP(SAM_BAM.out.bam, SAM_BAM.out.bam_bai)
+    BASE_RECAP(MARK_DUP.out.dedup_bam, MARK_DUP.out.bai, params.ref, params.fasta_index, params.dict, params.site, params.site_idx, params.interval, params.dbsnp, params.dbsnp_idx,  )
     applyBQSR(MARK_DUP.out.dedup_bam, params.ref, BASE_RECAP.out.table, params.fasta_index, params.dict)
-    SUMMARY_METRICS(params.ref, applyBQSR.out.applyed_bqsr_bam)
 
     HAPLOTYPECALLER(params.ref, applyBQSR.out.applyed_bqsr_bam,params.fasta_index, params.dict)
     DEEPVARIANT(params.ref, applyBQSR.out.applyed_bqsr_bam, applyBQSR.out.bqsr_idx, params.fasta_index, params.dict)
-
+    
     VAR_RECAL(params.ref, params.fasta_index, params.dict, HAPLOTYPECALLER.out.htvc, params.dbsnp, params.thousandG, params.dbsnp_idx, params.thousandG_idx, params.hapmap, params.hapmap_idx, params.omni, params.omni_idx)
-
+    
     apply_VQSR(params.ref,params.fasta_index, params.dict, HAPLOTYPECALLER.out.htvc, VAR_RECAL.out.var_recal, VAR_RECAL.out.tranches, VAR_RECAL.out.var_recal_idx)
-
+     
     VARIANT_FILTER(params.ref, params.fasta_index, params.dict, apply_VQSR.out.htvc_recalibrated, apply_VQSR.out.htvc_index_recalibrated)
-
+   
     SNP(params.ref, params.fasta_index, params.dict, VARIANT_FILTER.out.htvc_filtered)
     INDEL(params.ref, params.fasta_index, params.dict, VARIANT_FILTER.out.htvc_filtered)
 
@@ -678,7 +685,7 @@ workflow pipeline {
 
     MERGE_VCFS_HTVC(SNP.out.htvc_snp, INDEL.out.htvc_indel)
     MERGE_VCFS_DV(SNP_DV.out.dv_snp, INDEL_DV.out.dv_indel)
-
+    
     FUNCOTATOR_ANNOTATION_HTVC(params.ref, params.fasta_index, params.dict, MERGE_VCFS_HTVC.out.htvc_merged, MERGE_VCFS_HTVC.out.htvc_merged_idx)
     FUNCOTATOR_ANNOTATION_DV(params.ref, params.fasta_index, params.dict, MERGE_VCFS_DV.out.dv_merged, MERGE_VCFS_DV.out.dv_merged_idx)
 
@@ -686,7 +693,6 @@ workflow pipeline {
     ANNOVAR_DV(params.ref, params.fasta_index, params.dict,  MERGE_VCFS_DV.out.dv_merged, MERGE_VCFS_DV.out.dv_merged_idx)
 
     process_happy(params.ref, params.fasta_index, params.benchmark, params.bench_idx, params.bench_bed, DEEPVARIANT.out.dv)
-
 }
 
 workflow case_study{
@@ -703,7 +709,33 @@ workflow case_study{
 
 workflow {
     pipeline()
-    case_study()
+    //case_study()
 }
 
 
+
+/*
+SUMMARY_METRICS(params.ref, applyBQSR.out.applyed_bqsr_bam)
+process SUMMARY_METRICS {
+
+    tag "Evaluating overall quality of the alignments"
+    publishDir "${params.outdir}/SummeryMetrics", mode: 'copy'
+
+    input:
+    path ref
+    path applyed_bqsr_bam
+
+    output:
+    path ('alignment_metrics.txt'), emit:Metrics
+    path ('insert_size_metrics.txt'), emit:InsertSize
+    path ('histogram.pdf'),  emit:histogram
+
+    script:
+    """
+    gatk CollectAlignmentSummaryMetrics R=${ref} I=${applyed_bqsr_bam} O=alignment_metrics.txt
+    gatk CollectInsertSizeMetrics INPUT=${applyed_bqsr_bam} OUTPUT=insert_size_metrics.txt \
+    HISTOGRAM_FILE=histogram.pdf
+    """
+
+}
+*/
