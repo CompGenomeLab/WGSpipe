@@ -11,6 +11,9 @@ Wget [ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR794/SRR794275/SRR794275_2.fastq.g](f
 
 Now we have our fastq files which corresponds to pair end reads of a WGS data.
 
+For the needed data resources the google bucket data set is used which provided by GATK:
+https://console.cloud.google.com/storage/browser/genomics-public-data/resources/broad/hg38/v0;tab=objects?prefix=&forceOnObjectsSortingFiltering=false
+
 Check the quality before getting to data preprocessing steps of the pipeline.
 
 ```jsx
