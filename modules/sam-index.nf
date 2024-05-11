@@ -8,6 +8,7 @@ process SAM_INDEX_REF_FASTA {
 
 	output:
 	path ("*.fai"),emit: genome_idx
+	
 	script:
 	"""
 	samtools faidx ${ref}

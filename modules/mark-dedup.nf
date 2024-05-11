@@ -17,6 +17,8 @@ process MARK_DEDUP {
     gatk MarkDuplicatesSpark -I ${bam_file} \
     -O ${bam_file.baseName}_dedup.bam \
     --remove-sequencing-duplicates \
-    --conf 'spark.executor.cores=${task.cpus}'
+    --conf 'spark.executor.cores=${task.cpus}' \
+    --tmp-dir .
     """
 }
+

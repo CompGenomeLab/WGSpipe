@@ -8,7 +8,7 @@ process TRIM_FASTP{
     
     
     output:
-    tuple val(sample), path("${sample}_trimmed_1.fastq"), path("${sample}_trimmed_2.fastq"), emit: trimmed
+    tuple val(sample), path("${sample}_trimmed_{1,2}.fastq"), emit: trimmed
     tuple val(sample), path('*.json'), emit: json
     tuple val(sample), path('*.html'), emit: html
 
@@ -19,5 +19,9 @@ process TRIM_FASTP{
     --thread ${task.cpus} \
     --out1 ${sample}_trimmed_1.fastq --out2 ${sample}_trimmed_2.fastq \
     -j ${sample}_fastp.json -h ${sample}_fastp.html
+
+    zip ${sample}_trimmed_1.fastq 
+    zip ${sample}_trimmed_2.fastq
+
     """
 }
