@@ -14,6 +14,6 @@ process BWA_MEM { //need CPU and memory
 
     script:
     """
-    bwa mem -t ${task.cpus} -R "@RG\\tID:${sample}\\tPL:ILLUMINA\\tSM:${sample}" ${ref} ${reads[0]} ${reads[1]} > ${sample}_paired.sam
+    bwa mem -M -t ${task.cpus} -R "@RG\\tID:${sample}\\tPL:ILLUMINA\\tSM:${sample}" ${ref} ${reads[0]} ${reads[1]} > ${sample}_paired.sam
     """
 }

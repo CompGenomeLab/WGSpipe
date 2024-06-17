@@ -8,6 +8,7 @@ process DEEPVARIANT {
     path applyed_bqsr_bai
     path fasta_index
     path dict
+    path wes_bed
 
     output:
     path('dv_variants.vcf'), emit: dv
@@ -19,7 +20,7 @@ process DEEPVARIANT {
         --ref=${ref} \
         --reads=${applyed_bqsr_bam} \
         --output_vcf=dv_variants.vcf \
-        --regions chr20 \
+        --regions ${wes_bed} \
         --num_shards=${task.cpus}
     """
 }

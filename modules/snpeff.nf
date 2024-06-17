@@ -9,6 +9,7 @@ process SNPEFF {
     path dict
     path merge_variant
     path merge_variant_idx
+    path snpeff_db
 
     output:
     path "*.ann.vcf"
@@ -16,7 +17,14 @@ process SNPEFF {
 
     script:
     """
-    snpEff -v -download hg38  -i ${merge_variant} -o vcf -csvStats ${merge_variant.baseName}_variant_snpeff.csv > ${merge_variant.baseName}_variant_snpeff.ann.vcf
+    snpEff \\
+        -Xmx${avail_mem}M \\
+        -v ${snpeff_db} \\
+        -csvStats ${merge_variant.baseName}_variant_snpeff.csv\\
+        ${merge_variant} \\
+        > ${merge_variant.baseName}_variant_snpeff.ann.vcf 
     """
 }
+
+// snpEff -v -download hg38  -i ${merge_variant} -o vcf -csvStats ${merge_variant.baseName}_variant_snpeff.csv > ${merge_variant.baseName}_variant_snpeff.ann.vcf
 

@@ -8,17 +8,18 @@ process MARK_DEDUP {
     path bam_file_idx    
 
     output:
-    path "*_dedup.bam", emit: dedup_bam
+    path ("*_dedup.bam"), emit: dedup_bam
     path('*bai') , emit: bai
     path('*sbi') , emit: sbi
+    path('*metrics')
     
     script:
+    def avail_mem = (task.memory.mega*0.8).intValue()
     """
-    gatk MarkDuplicatesSpark -I ${bam_file} \
+    gatk --java-options "-Xmx${task.memory}" MarkDuplicatesSpark \
+    -I ${bam_file} \
     -O ${bam_file.baseName}_dedup.bam \
-    --remove-sequencing-duplicates \
-    --conf 'spark.executor.cores=${task.cpus}' \
-    --tmp-dir .
+    -M ${bam_file.baseName}_dedup.metrics \
+    --conf 'spark.executor.cores=${task.cpus}'
     """
 }
-

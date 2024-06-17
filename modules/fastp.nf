@@ -14,14 +14,14 @@ process TRIM_FASTP{
 
     script:
     """
-    fastp --in1 ${reads[0]} --in2 ${reads[1]} \
-    --detect_adapter_for_pe \
-    --thread ${task.cpus} \
-    --out1 ${sample}_trimmed_1.fastq --out2 ${sample}_trimmed_2.fastq \
-    -j ${sample}_fastp.json -h ${sample}_fastp.html
-
-    zip ${sample}_trimmed_1.fastq 
-    zip ${sample}_trimmed_2.fastq
-
+    fastp \\
+    --in1 ${reads[0]} \\
+    --in2 ${reads[1]} \\
+    --detect_adapter_for_pe \\
+    --thread ${task.cpus} \\
+    --out1 ${sample}_trimmed_1.fastq \\
+    --out2 ${sample}_trimmed_2.fastq \\
+    -j ${sample}_fastp.json \\
+    -h ${sample}_fastp.html
     """
 }

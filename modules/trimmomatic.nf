@@ -11,17 +11,16 @@ process TRIMMOMATIC{
     val trimmomatic_min_len 
 
     output:
-    tuple val(sample_id), path("trimmed_*_paired.fq.gz"), path("trimmed_*_unpaired.fq.gz") 
+    tuple val(sample), path("${sample}_trimmed_{R1,R2}.fq.gz"), emit:trimmomatic_fastq
+    tuple val(sample), path("${sample}_unpaired_{R1,R2}.fq.gz"), emit:unpaired
 
     script:
     """
-     trimmomatic PE -phred33 ${reads} -threads ${task.cpus} "${sample}_filtered_R1.fastq" "${sample}_unpaired_R1.fastq" \
-     "${sample}_filtered_R2.fastq" "${sample}_unpaired_R2.fastq" \
+     trimmomatic PE -phred33 -threads ${task.cpus} -summary ${reads}  "${sample}_trimmed_R1.fq.gz" "${sample}_unpaired_R1.fq.gz" \
+     "${sample}_trimmed_R2.fq.gz" "${sample}_unpaired_R2.fq.gz" \
      ILLUMINACLIP:${params.trimmomatic_adapters}:${params.trimmomatic_adapters_param} \
      SLIDINGWINDOW:${params.trimmomatic_window_len}:${params.trimmomatic_window_val} \
      MINLEN:${params.trimmomatic_min_len} 2> ${name}.log
-    
     """
-
 
 }
