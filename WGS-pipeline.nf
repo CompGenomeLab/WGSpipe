@@ -206,7 +206,7 @@ workflow {
 
 
 /*
-HG001.novaseq.wes_truseq.50x
+NOTES
 
 salloc -A users -p long_mdbf --qos=long_mdbf $SHELL
 scontrol show job 2075|grep NodeList
@@ -215,90 +215,4 @@ https://ftp-trace.ncbi.nlm.nih.gov/giab/ftp/data/NA12878/
 https://console.cloud.google.com/storage/browser/brain-genomics-public/research/sequencing/fastq/novaseq/wgs_pcr_free?pageState=(%22StorageObjectListTable%22:(%22f%22:%22%255B%255D%22))
 
 nextflow run nf-core/sarek -profile singularity --input samplesheet.csv --outdir ./X-sarek --tools deepvariant,freebayes,haplotypecaller,snpeff,strelka,tiddit,manta,cnvkit,merge -r 3.4.0 -resume
-
-include { SELECT_SNP_HTVC; SELECT_INDEL_HTVC } from './modules/select-variants-htvc.nf'
-include { SELECT_SNP_DV; SELECT_INDEL_DV } from './modules/select-variants-dv.nf'
-include { MERGE_VCFS_HTVC } from './modules/merge-vcf-htvc.nf'
-include { MERGE_VCFS_DV } from './modules/merge-vcf-dv.nf'
-include { FUNCOTATOR_ANNOTATION_HTVC } from './modules/funcotator-htvc.nf'
-include { FUNCOTATOR_ANNOTATION_DV } from './modules/funcotator-dv.nf'
-include { ANNOVAR_HTVC } from './modules/annovar-htvc.nf'
-include { ANNOVAR_DV } from './modules/annovar-dv.nf'
-include { SNPEFF_HTVC; SNPEFF_DV } from './modules/snpeff.nf'
-    SELECT_SNP_HTVC(params.ref, params.fasta_index, params.dict, VARIANT_FILTER.out.htvc_filtered)
-    SELECT_INDEL_HTVC(params.ref, params.fasta_index, params.dict, VARIANT_FILTER.out.htvc_filtered)
-
-    SELECT_SNP_DV(params.ref, params.fasta_index, params.dict, vcf_dv)
-    SELECT_INDEL_DV(params.ref, params.fasta_index, params.dict, vcf_dv)
-
-    MERGE_VCFS_HTVC(SELECT_SNP_HTVC.out.htvc_snp, SELECT_INDEL_HTVC.out.htvc_indel)
-    MERGE_VCFS_DV(SELECT_SNP_DV.out.dv_snp, SELECT_INDEL_DV.out.dv_indel)
-
-    FUNCOTATOR_ANNOTATION_HTVC(params.ref, params.fasta_index, params.dict, MERGE_VCFS_HTVC.out.htvc_merged, MERGE_VCFS_HTVC.out.htvc_merged_idx)
-    FUNCOTATOR_ANNOTATION_DV(params.ref, params.fasta_index, params.dict, MERGE_VCFS_DV.out.dv_merged, MERGE_VCFS_DV.out.dv_merged_idx)
-
-    ANNOVAR_HTVC(params.ref, params.fasta_index, params.dict, MERGE_VCFS_HTVC.out.htvc_merged, MERGE_VCFS_HTVC.out.htvc_merged_idx)
-    ANNOVAR_DV(params.ref, params.fasta_index, params.dict,  MERGE_VCFS_DV.out.dv_merged, MERGE_VCFS_DV.out.dv_merged_idx)
-
-    SNPEFF_HTVC(params.ref, params.fasta_index, params.dict, MERGE_VCFS_HTVC.out.htvc_merged, MERGE_VCFS_HTVC.out.htvc_merged_idx, snpeff_db)
-    SNPEFF_DV(params.ref, params.fasta_index, params.dict, MERGE_VCFS_DV.out.dv_merged, MERGE_VCFS_DV.out.dv_merged_idx, snpeff_db)
-*/
-
-/*
-Reference genome options
-  ascat_genome           : hg38
-  ascat_alleles          : s3://ngi-igenomes/igenomes//Homo_sapiens/GATK/GRCh38/Annotation/ASCAT/G1000_alleles_hg38.zip
-  ascat_loci             : s3://ngi-igenomes/igenomes//Homo_sapiens/GATK/GRCh38/Annotation/ASCAT/G1000_loci_hg38.zip
-  ascat_loci_gc          : s3://ngi-igenomes/igenomes//Homo_sapiens/GATK/GRCh38/Annotation/ASCAT/GC_G1000_hg38.zip
-  ascat_loci_rt          : s3://ngi-igenomes/igenomes//Homo_sapiens/GATK/GRCh38/Annotation/ASCAT/RT_G1000_hg38.zip
-  bwa                    : s3://ngi-igenomes/igenomes//Homo_sapiens/GATK/GRCh38/Sequence/BWAIndex/
-  bwamem2                : s3://ngi-igenomes/igenomes//Homo_sapiens/GATK/GRCh38/Sequence/BWAmem2Index/
-  chr_dir                : s3://ngi-igenomes/igenomes//Homo_sapiens/GATK/GRCh38/Sequence/Chromosomes
-  dbsnp                  : s3://ngi-igenomes/igenomes//Homo_sapiens/GATK/GRCh38/Annotation/GATKBundle/dbsnp_146.hg38.vcf.gz
-  dbsnp_tbi              : s3://ngi-igenomes/igenomes//Homo_sapiens/GATK/GRCh38/Annotation/GATKBundle/dbsnp_146.hg38.vcf.gz.tbi
-  dbsnp_vqsr             : --resource:dbsnp,known=false,training=true,truth=false,prior=2.0 dbsnp_146.hg38.vcf.gz
-  dict                   : s3://ngi-igenomes/igenomes//Homo_sapiens/GATK/GRCh38/Sequence/WholeGenomeFasta/Homo_sapiens_assembly38.dict
-  dragmap                : s3://ngi-igenomes/igenomes//Homo_sapiens/GATK/GRCh38/Sequence/dragmap/
-  fasta                  : s3://ngi-igenomes/igenomes//Homo_sapiens/GATK/GRCh38/Sequence/WholeGenomeFasta/Homo_sapiens_assembly38.fasta
-  fasta_fai              : s3://ngi-igenomes/igenomes//Homo_sapiens/GATK/GRCh38/Sequence/WholeGenomeFasta/Homo_sapiens_assembly38.fasta.fai
-  germline_resource      : s3://ngi-igenomes/igenomes//Homo_sapiens/GATK/GRCh38/Annotation/GATKBundle/af-only-gnomad.hg38.vcf.gz
-  germline_resource_tbi  : s3://ngi-igenomes/igenomes//Homo_sapiens/GATK/GRCh38/Annotation/GATKBundle/af-only-gnomad.hg38.vcf.gz.tbi
-  known_indels           : s3://ngi-igenomes/igenomes//Homo_sapiens/GATK/GRCh38/Annotation/GATKBundle/{Mills_and_1000G_gold_standard.indels.hg38,beta/Homo_sapiens_assembly38.known_indels}.vcf.gz
-  known_indels_tbi       : s3://ngi-igenomes/igenomes//Homo_sapiens/GATK/GRCh38/Annotation/GATKBundle/{Mills_and_1000G_gold_standard.indels.hg38,beta/Homo_sapiens_assembly38.known_indels}.vcf.gz.tbi
-  known_indels_vqsr      : --resource:gatk,known=false,training=true,truth=true,prior=10.0 Homo_sapiens_assembly38.known_indels.vcf.gz --resource:mills,known=false,training=true,truth=true,prior=10.0 Mills_and_1000G_gold_standard.indels.hg38.vcf.gz
-  known_snps             : s3://ngi-igenomes/igenomes//Homo_sapiens/GATK/GRCh38/Annotation/GATKBundle/1000G_omni2.5.hg38.vcf.gz
-  known_snps_tbi         : s3://ngi-igenomes/igenomes//Homo_sapiens/GATK/GRCh38/Annotation/GATKBundle/1000G_omni2.5.hg38.vcf.gz.tbi
-  known_snps_vqsr        : --resource:1000G,known=false,training=true,truth=true,prior=10.0 1000G_omni2.5.hg38.vcf.gz
-  mappability            : s3://ngi-igenomes/igenomes//Homo_sapiens/GATK/GRCh38/Annotation/Control-FREEC/out100m2_hg38.gem
-  ngscheckmate_bed       : s3://ngi-igenomes/igenomes//Homo_sapiens/GATK/GRCh38/Annotation/NGSCheckMate/SNP_GRCh38_hg38_wChr.bed
-  pon                    : s3://ngi-igenomes/igenomes//Homo_sapiens/GATK/GRCh38/Annotation/GATKBundle/1000g_pon.hg38.vcf.gz
-  pon_tbi                : s3://ngi-igenomes/igenomes//Homo_sapiens/GATK/GRCh38/Annotation/GATKBundle/1000g_pon.hg38.vcf.gz.tbi
-  sentieon_dnascope_model: s3://ngi-igenomes/igenomes//Homo_sapiens/GATK/GRCh38/Annotation/Sentieon/SentieonDNAscopeModel1.1.model
-  snpeff_db              : 105
-  snpeff_genome          : GRCh38
-  vep_genome             : GRCh38
-  vep_species            : homo_sapiens
-  vep_cache_version      : 110
-
-nextflow run nf-core/sarek -r 3.4.0 -name test_hg002_3 -profile singularity -resume -params-file sarek/nf-params.json
-
-
-snpEff \\
-        -Xmx${avail_mem}M \\
-        download ${genome}.${cache_version} \\
-        -dataDir \${PWD}/snpeff_cache \\
-        ${args}
-
-
-    FUNCOTATOR_ANNOTATION_HTVC(params.ref, params.fasta_index, params.dict, MERGE_VCFS_HTVC.out.htvc_merged, MERGE_VCFS_HTVC.out.htvc_merged_idx)
-    FUNCOTATOR_ANNOTATION_DV(params.ref, params.fasta_index, params.dict, MERGE_VCFS_DV.out.dv_merged, MERGE_VCFS_DV.out.dv_merged_idx)
-
-    ANNOVAR_HTVC(params.ref, params.fasta_index, params.dict, MERGE_VCFS_HTVC.out.htvc_merged, MERGE_VCFS_HTVC.out.htvc_merged_idx)
-    ANNOVAR_DV(params.ref, params.fasta_index, params.dict,  MERGE_VCFS_DV.out.dv_merged, MERGE_VCFS_DV.out.dv_merged_idx)
-
-    SNPEFF_DB()
-    snpeff_db = Channel.fromPath("\${PWD}/snpeff-db/*")
-
-    SNPEFF_HTVC(params.ref, params.fasta_index, params.dict, MERGE_VCFS_HTVC.out.htvc_merged, MERGE_VCFS_HTVC.out.htvc_merged_idx, snpeff_db)
-    SNPEFF_DV(params.ref, params.fasta_index, params.dict, MERGE_VCFS_DV.out.dv_merged, MERGE_VCFS_DV.out.dv_merged_idx, snpeff_db)
 */
