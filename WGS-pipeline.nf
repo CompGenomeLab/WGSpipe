@@ -18,16 +18,26 @@ params.omni_idx = params.genomes[params.genome]?.omni_idx
 params.interval = params.genomes[params.genome]?.interval
 params.indel = params.genomes[params.genome]?.indel
 params.indel_idx = params.genomes[params.genome]?.indel_idx
-trimmomatic_adapters = params.genomes[params.genome]?.trimmomatic_adapters
-trimmomatic_adapters_param = params.genomes[params.genome]?.trimmomatic_adapters_param
-trimmomatic_window_len = params.genomes[params.genome]?.trimmomatic_window_len
-trimmomatic_window_val = params.genomes[params.genome]?.trimmomatic_window_val
-trimmomatic_min_len = params.genomes[params.genome]?.trimmomatic_min_len
+params.snpeff_db = params.genomes[params.genome]?.snpeff_db
+params.trimmomatic_adapters = params.genomes[params.genome]?.trimmomatic_adapters
+params.trimmomatic_adapters_param = params.genomes[params.genome]?.trimmomatic_adapters_param
+params.trimmomatic_window_len = params.genomes[params.genome]?.trimmomatic_window_len
+params.trimmomatic_window_val = params.genomes[params.genome]?.trimmomatic_window_val
+params.trimmomatic_min_len = params.genomes[params.genome]?.trimmomatic_min_len
+params.tools = params.genomes[params.genome]?.tools
+params.step = params.genomes[params.genome]?.step
+params.bam_file = params.bam_file[params.genome]?.bam_file
+params.bam_file_idx = params.bam_file_idx[params.genome]?.bam_file_idx
+params.vcf_idx = params.vcf_idx[params.genome]?.vcf_idx
+params.vcf_annotation = params.vcf_annotation[params.genome]?.vcf_annotation
 
 
-params.benchmark = "${launchDir}/nf-core/benchmark/HG002_GRCh38_1_22_v4.2.1_benchmark.vcf.gz"
-params.bench_idx = "${launchDir}/nf-core/benchmark/HG002_GRCh38_1_22_v4.2.1_benchmark.vcf.gz.tbi"
-params.bench_bed = "${launchDir}/nf-core/benchmark/HG002_GRCh38_1_22_v4.2.1_benchmark_noinconsistent.bed"
+params.bam = "${launchDir}/nf-core/input/HG003.novaseq.wes_idt.100x.dedup.bam"
+params.bam_bai = "${launchDir}/nf-core/input/HG003.novaseq.wes_idt.100x.dedup.bam"
+params.benchmark = "${launchDir}/nf-core/benchmark/HG003_GRCh38_1_22_v4.2.1_benchmark.vcf.gz"
+params.bench_idx = "${launchDir}/nf-core/benchmark/HG003_GRCh38_1_22_v4.2.1_benchmark.vcf.gz.tbi"
+params.bench_bed = "${launchDir}/nf-core/benchmark/HG003_GRCh38_1_22_v4.2.1_benchmark_noinconsistent.bed"
+params.wes_bed = "${launchDir}/nf-core/benchmark/idt_capture.grch38.bed"
 
 read_pairs_ch = Channel.fromFilePairs(params.reads, checkIfExists:true) //paired end check
 
@@ -48,6 +58,8 @@ def helpMessage() {
       --fasta_index                If reference index files exist.
       --dict                       If reference dictionary files exist.
     Options:
+    --step                         
+    
     Trimming options
       --trimmomatic_adapters       Adapters index for adapter removal
       --trimmomatic_adapters_param Trimming parameters for adapters. <seed mismatches>:<palindrome clip threshold>:<simple clip threshold>. Default 2:30:10
@@ -57,6 +69,12 @@ def helpMessage() {
     Other options:
       --outdir                     The output directory where the results will be saved
     """.stripIndent()
+}
+
+params.help = false
+if (params.help) {
+    helpMessage()
+    exit 0
 }
 
 log.info """\
@@ -90,6 +108,8 @@ include { VARIANT_FILTER } from './modules/variant-filteration.nf'
 include { GATK_INDEX } from './modules/gatk4-index.nf'
 
 include {ANNOTATION} from './subworkflows/annotation-all.nf'
+include {ANALYSIS} from './subworkflows/happy-analysis.nf'
+
 
 workflow {
 
@@ -108,51 +128,91 @@ workflow {
         params.dict = dict
     }
 
-    FASTQC(read_pairs_ch) // checks quality of the pairend reads fastq
-    MULTIQC(FASTQC.out.fastqc_files) // checks quality of the pairend reads fastq
-    
-    BWA_INDEX(params.ref) //index reference for BWA
-    TRIM_FASTP(read_pairs_ch) //trim paired end reads on default mode
-    TRIMMOMATIC(read_pairs_ch, trimmomatic_adapters, trimmomatic_adapters_param, trimmomatic_window_len, trimmomatic_window_val, trimmomatic_min_len)
-    BWA_MEM(params.ref, BWA_INDEX.out.index, TRIM_FASTP.out.trimmed) //
-    SAM_CONVERTER(BWA_MEM.out.aligned) //converts to sam and sort the bam
 
-    MARK_DEDUP(SAM_CONVERTER.out.bam, SAM_CONVERTER.out.bam_bai) //sorted bam file removed duplicates
-    BASE_RECAP(MARK_DEDUP.out.dedup_bam, MARK_DEDUP.out.bai, params.ref, params.fasta_index, params.dict, params.site, params.site_idx, params.interval, params.dbsnp, params.dbsnp_idx, params.indel, params.indel_idx)
-    APPLY_BQSR(MARK_DEDUP.out.dedup_bam, params.ref, BASE_RECAP.out.table, params.fasta_index, params.dict, params.interval)
+    if(params.step.split(,).contains('preprocessing')){
+        FASTQC(read_pairs_ch) // checks quality of the pairend reads fastq
+        MULTIQC(FASTQC.out.fastqc_files) // checks quality of the pairend reads fastq
+        BWA_INDEX(params.ref) //index reference for BWA
+        
+        TRIM_FASTP(read_pairs_ch) //trim paired end reads on default mode
+        //TRIMMOMATIC(read_pairs_ch, params.trimmomatic_adapters, params.trimmomatic_adapters_param, params.trimmomatic_window_len, params.trimmomatic_window_val, params.trimmomatic_min_len)
+        
+        BWA_MEM(params.ref, BWA_INDEX.out.index, TRIM_FASTP.out.trimmed) 
+        SAM_CONVERTER(BWA_MEM.out.aligned) //converts to sam and sort the bam
 
-    VARIANT_CALLING(params.ref, params.fasta_index, params.dict, APPLY_BQSR.out.applyed_bqsr_bam, APPLY_BQSR.out.bqsr_idx, params.dbsnp, params.dbsnp_idx, params.interval)
-    vcf_htvc = VARIANT_CALLING.out.vcf_htvc
-    vcf_dv = VARIANT_CALLING.out.vcf_dv
-    vcf_fb = VARIANT_CALLING.out.vcf_fb
-    vcf_all = VARIANT_CALLING.out.vcf_all
+        MARK_DEDUP(SAM_CONVERTER.out.bam, SAM_CONVERTER.out.bam_bai) //sorted bam file removed duplicates
+        BASE_RECAP(MARK_DEDUP.out.dedup_bam, MARK_DEDUP.out.bai, params.ref, params.fasta_index, params.dict, params.site, params.site_idx, params.interval, params.dbsnp, params.dbsnp_idx, params.indel, params.indel_idx)
+        APPLY_BQSR(MARK_DEDUP.out.dedup_bam, params.ref, BASE_RECAP.out.table, params.fasta_index, params.dict, params.interval)
+        
+        params.bam_file = APPLY_BQSR.out.applyed_bqsr_bam
+        params.bam_file_idx = APPLY_BQSR.out.bqsr_idx
+    
+    }
+    
+    vcf_index_ch = Channel.empty()
+    vcf_annotation_ch = Channel.empty()
+    
+    if(params.step.split(,).contains('variant_calling')){
+      if(!params.bam_file || !params.bam_file_idx){ //ref file check
+        exit 1, "BAM file of a genome not specified! Please, provide --bam_file and --bam_file_idx"
+      }
+      if (params.tools.split(',').contains('haplotypecaller') || params.tools.split(',').contains('deepvariant') || params.tools.split(',').contains('freebayes')){
+          VARIANT_CALLING(params.tools, params.ref, params.fasta_index, params.dict, bam_file, bam_file_idx, params.dbsnp, params.dbsnp_idx, params.interval)
+          vcf_htvc = VARIANT_CALLING.out.vcf_htvc
+          vcf_dv = VARIANT_CALLING.out.vcf_dv
+          vcf_fb = VARIANT_CALLING.out.vcf_fb
+          vcf_all = VARIANT_CALLING.out.vcf_all
 
-    HAPPY(params.ref, params.fasta_index, params.benchmark, params.bench_idx, params.bench_bed, vcf_dv)
-    
-    VAR_RECAL(params.ref, params.fasta_index, params.dict, vcf_htvc, params.dbsnp, params.thousandG, params.dbsnp_idx, params.thousandG_idx, params.hapmap, params.hapmap_idx, params.omni, params.omni_idx)
-    APPLY_VQSR(params.ref,params.fasta_index, params.dict, vcf_htvc, VAR_RECAL.out.var_recal, VAR_RECAL.out.tranches, VAR_RECAL.out.var_recal_idx)
-    VARIANT_FILTER(params.ref, params.fasta_index, params.dict, APPLY_VQSR.out.htvc_recalibrated, APPLY_VQSR.out.htvc_index_recalibrated)
-    
-    vcf_htvc = VARIANT_FILTER.out.htvc_filtered
+          HAPPY(params.ref, params.fasta_index, params.benchmark, params.bench_idx, params.bench_bed, vcf_dv, params.wes_bed)
+          
+          VAR_RECAL(params.ref, params.fasta_index, params.dict, vcf_htvc, params.dbsnp, params.thousandG, params.dbsnp_idx, params.thousandG_idx, params.hapmap, params.hapmap_idx, params.omni, params.omni_idx)
+          APPLY_VQSR(params.ref,params.fasta_index, params.dict, vcf_htvc, VAR_RECAL.out.var_recal, VAR_RECAL.out.tranches, VAR_RECAL.out.var_recal_idx)
+          VARIANT_FILTER(params.ref, params.fasta_index, params.dict, APPLY_VQSR.out.htvc_recalibrated, APPLY_VQSR.out.htvc_index_recalibrated)
+          
+          vcf_htvc = VARIANT_FILTER.out.htvc_filtered
   
-    vcf_to_idx = Channel.empty()
-    vcf_to_idx = vcf_to_idx.mix(vcf_htvc)
-    vcf_to_idx = vcf_to_idx.mix(vcf_dv)
-    vcf_to_idx = vcf_to_idx.mix(vcf_fb)
+          vcf_to_idx = vcf_to_idx.mix(vcf_htvc)
+          vcf_to_idx = vcf_to_idx.mix(vcf_dv)
+          vcf_to_idx = vcf_to_idx.mix(vcf_fb)
 
-    GATK_INDEX(vcf_to_idx)
-    vcf_index = GATK_INDEX.out.vcf_idx
-    
-    vcf_annotation = Channel.empty()
-    vcf_annotation = vcf_annotation.mix(VARIANT_FILTER.out.htvc_filtered)
-    vcf_annotation = vcf_annotation.mix(VARIANT_CALLING.out.vcf_dv)
-    vcf_annotation = vcf_annotation.mix(VARIANT_CALLING.out.vcf_fb)
+          GATK_INDEX(vcf_to_idx)
+          vcf_index_ch = GATK_INDEX.out.vcf_idx
+          
+          vcf_annotation_ch = vcf_annotation.mix(VARIANT_FILTER.out.htvc_filtered)
+          vcf_annotation_ch = vcf_annotation.mix(VARIANT_CALLING.out.vcf_dv)
+          vcf_annotation_ch = vcf_annotation.mix(VARIANT_CALLING.out.vcf_fb)
+      }
 
-    ANNOTATION(params.ref, params.fasta_index, params.dict, vcf_annotation, vcf_index)
+    }
+
     
+    if (!params.steps.contains('variant_calling') && !params.steps.contains('preprocessing')) {  
+      vcf_annotation_ch = Channel.fromFilePairs(params.vcf_annotation, checkIfExists:true)
+      vcf_index_ch = Channel.fromFilePairs(params.vcf_idx, checkIfExists:true)
+    }
+    
+    if(params.step.split(,).contains('annotate')){
+      if(!params.vcf_idx || !params.vcf_annotation){
+         exit 1, "VCF file of a genome not specified for annotation! Please, provide --vcf_annotation and --vcf_idx"
+      }
+          
+
+      if (params.tools.split(',').contains('funcotator') || params.tools.split(',').contains('annovar') || params.tools.split(',').contains('snpeff')){
+         ANNOTATION(params.tools, params.ref, params.fasta_index, params.dict, vcf_annotation, vcf_index, params.snpeff_db)
+      }
+    }
+  
 }
 
+
 /*
+HG001.novaseq.wes_truseq.50x
+
+salloc -A users -p long_mdbf --qos=long_mdbf $SHELL
+scontrol show job 2075|grep NodeList
+https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/
+https://ftp-trace.ncbi.nlm.nih.gov/giab/ftp/data/NA12878/ 
+https://console.cloud.google.com/storage/browser/brain-genomics-public/research/sequencing/fastq/novaseq/wgs_pcr_free?pageState=(%22StorageObjectListTable%22:(%22f%22:%22%255B%255D%22))
 
 nextflow run nf-core/sarek -profile singularity --input samplesheet.csv --outdir ./X-sarek --tools deepvariant,freebayes,haplotypecaller,snpeff,strelka,tiddit,manta,cnvkit,merge -r 3.4.0 -resume
 
