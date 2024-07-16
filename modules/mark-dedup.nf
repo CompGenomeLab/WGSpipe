@@ -16,10 +16,20 @@ process MARK_DEDUP {
     script:
     def avail_mem = (task.memory.mega*0.8).intValue()
     """
-    gatk --java-options "-Xmx${task.memory}" MarkDuplicatesSpark \
+    gatk MarkDuplicatesSpark \
     -I ${bam_file} \
     -O ${bam_file.baseName}_dedup.bam \
     -M ${bam_file.baseName}_dedup.metrics \
     --conf 'spark.executor.cores=${task.cpus}'
     """
 }
+
+ gatk MarkDuplicatesSpark \
+    -I HG001.novaseq.pcr-free.30x.dedup.grch38.bam \
+    -O test_dedup.bam \
+    -M test_dedup.metrics \
+    --tmp-dir /cta/users/baharsevgin/tmp
+    --conf 'spark.executor.cores=6'
+    
+
+/cta/users/baharsevgin/ENS491-pipeline/results_HG003_WGS/sam-to-bam

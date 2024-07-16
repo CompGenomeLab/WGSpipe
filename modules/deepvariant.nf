@@ -20,7 +20,7 @@ process DEEPVARIANT {
         --ref=${ref} \
         --reads=${applyed_bqsr_bam} \
         --output_vcf=dv_variants.vcf \
-        --regions ${wes_bed} \
+        --regions ${wes_b} \
         --num_shards=${task.cpus}
     """
 }

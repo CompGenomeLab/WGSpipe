@@ -1,6 +1,6 @@
 process ANNOVAR{
     tag "Annotating variants with ANNOVAR"
-    publishDir "${params.outdir}/annovar_annotation", mode: 'copy'
+    publishDir "${params.outdir}/annotation/${merge_variant.baseName}_annovar", mode: 'copy'
 
     input:
     path ref

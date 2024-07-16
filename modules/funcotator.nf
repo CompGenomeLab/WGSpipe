@@ -2,7 +2,7 @@ process FUNCOTATOR {
 
     tag "Annotating variants with Funcotator"
 
-    publishDir "${params.outdir}/funcotator_annotation", mode: 'copy'
+    publishDir "${params.outdir}/annotation/${merge_variant.baseName}_funcotator", mode: 'copy'
 
     input:
     path ref

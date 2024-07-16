@@ -16,7 +16,8 @@ process APPLY_BQSR {
 
     script:
     """
-    gatk ApplyBQSR -I ${dedup_bam} \
+    gatk ApplyBQSRSpark \
+    -I ${dedup_bam} \
     -R ${ref} \
     -L ${interval} \
     --bqsr-recal-file ${table} \

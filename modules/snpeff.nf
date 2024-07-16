@@ -1,7 +1,7 @@
 process SNPEFF {
     tag "SnpEFF annotation"
 
-    publishDir "${params.outdir}/snpeff_annotation", mode: 'copy'
+    publishDir "${params.outdir}/annotation/${merge_variant.baseName}_snpeff", mode: 'copy'
 
     input:
     path ref
@@ -20,6 +20,7 @@ process SNPEFF {
     snpEff \\
         -Xmx${avail_mem}M \\
         -v ${snpeff_db} \\
+        -dataDir \${PWD}/tmp \\
         -csvStats ${merge_variant.baseName}_variant_snpeff.csv\\
         ${merge_variant} \\
         > ${merge_variant.baseName}_variant_snpeff.ann.vcf 

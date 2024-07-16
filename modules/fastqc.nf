@@ -7,7 +7,7 @@ process FASTQC {
   tuple val(sample), path(reads)
 
   output:
-  path("*_fastqc.{zip,html}"), emit:fastqc_files
+  tuple val(sample), path("*_fastqc.{zip,html}"), emit:fastqc_files
 
   script:
   """
