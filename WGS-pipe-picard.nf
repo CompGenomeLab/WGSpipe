@@ -18,11 +18,14 @@ params.omni_idx = params.genomes[params.genome]?.omni_idx
 params.interval = params.genomes[params.genome]?.interval
 params.indel = params.genomes[params.genome]?.indel
 params.indel_idx = params.genomes[params.genome]?.indel_idx
-params.snpeff_db = params.genomes[params.genome]?.snpeff_db
+params.snpeff_db = params.genomes[params.genome]?.snpeff_db          
 params.tools = params.genomes[params.genome]?.tools
 params.step = params.genomes[params.genome]?.step
 params.bam_file = params.genomes[params.genome]?.bam_file
 params.bam_file_idx = params.genomes[params.genome]?.bam_file_idx
+params.vep_cache_version = params.genomes[params.genome]?.vep_cache_version
+params.vep_genome = params.genomes[params.genome]?.vep_genome            
+params.vep_species = params.genomes[params.genome]?.vep_species 
 
 params.benchmark = "${launchDir}/nf-core/benchmark/HG003_GRCh38_1_22_v4.2.1_benchmark.vcf.gz"
 params.bench_idx = "${launchDir}/nf-core/benchmark/HG003_GRCh38_1_22_v4.2.1_benchmark.vcf.gz.tbi"
@@ -87,6 +90,7 @@ include { VAR_RECAL } from './modules/variant-recalibrate.nf'
 include { APPLY_VQSR } from './modules/apply-vqsr.nf'
 include { VARIANT_FILTER } from './modules/variant-filteration.nf'
 include { GATK_INDEX } from './modules/gatk4-index.nf'
+include { SNPEFF_DB } from './modules/snpeff-db.nf'
 include { SNPEFF } from './modules/snpeff.nf'
 
 
@@ -110,7 +114,7 @@ workflow {
     final_bam_idx_ch = Channel.empty() //when preprocessing finishes
 
     if(params.step.split(',').contains('preprocessing')){
-         FASTQC(read_pairs_ch) // checks quality of the pairend reads fastq
+        FASTQC(read_pairs_ch) // checks quality of the pairend reads fastq
         MULTIQC(FASTQC.out.fastqc_files) // checks quality of the pairend reads fastq
         BWA_INDEX(params.ref) //index reference for BWA
         
@@ -120,11 +124,11 @@ workflow {
         SAM_CONVERTER(BWA_MEM.out.aligned) //converts to sam and sort the bam
 
         MARK_DEDUP_PICARD(SAM_CONVERTER.out.bam, SAM_CONVERTER.out.bam_bai) //sorted bam file removed duplicates
-        BASE_RECAP_PICARD(MARK_DEDUP.out.dedup_bam, MARK_DEDUP.out.bai, params.ref, params.fasta_index, params.dict, params.site, params.site_idx, params.interval, params.dbsnp, params.dbsnp_idx, params.indel, params.indel_idx)
-        APPLY_BQSR_PICARD(MARK_DEDUP.out.dedup_bam, params.ref, BASE_RECAP.out.table, params.fasta_index, params.dict, params.interval)
+        BASE_RECAP_PICARD(MARK_DEDUP_PICARD.out.dedup_bam, MARK_DEDUP_PICARD.out.bai, params.ref, params.fasta_index, params.dict, params.site, params.site_idx, params.interval, params.dbsnp, params.dbsnp_idx, params.indel, params.indel_idx)
+        APPLY_BQSR_PICARD(MARK_DEDUP_PICARD.out.dedup_bam, params.ref, BASE_RECAP_PICARD.out.table, params.fasta_index, params.dict, params.interval)
         
-        final_bam_ch = APPLY_BQSR.out.applyed_bqsr_bam
-        final_bam_idx_ch = APPLY_BQSR.out.bqsr_idx
+        final_bam_ch = APPLY_BQSR_PICARD.out.applyed_bqsr_bam
+        final_bam_idx_ch = APPLY_BQSR_PICARD.out.bqsr_idx
     }
     else if (params.step.split(',').contains('variant_calling')) {
         // If preprocessing is skipped, use input BAM file
@@ -170,9 +174,12 @@ workflow {
         }
     }
 
-    if(params.step.split(',').contains('annotate')){
-        SNPEFF(params.ref, params.fasta_index, params.dict, vcf_annotation_ch, vcf_index_ch, params.snpeff_db)
+    if(params.step.split(',').contains('annotate'))
+    {
+        SNPEFF_DB(params.snpeff_db)
+        SNPEFF(params.ref, params.fasta_index, params.dict, vcf_annotation_ch, vcf_index_ch, SNPEFF_DB.out.snpeff_cache, params.snpeff_db)
     }
 
 
 }
+
