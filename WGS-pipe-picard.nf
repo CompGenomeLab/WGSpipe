@@ -18,7 +18,8 @@ params.omni_idx = params.genomes[params.genome]?.omni_idx
 params.interval = params.genomes[params.genome]?.interval
 params.indel = params.genomes[params.genome]?.indel
 params.indel_idx = params.genomes[params.genome]?.indel_idx
-params.snpeff_db = params.genomes[params.genome]?.snpeff_db          
+params.snpeff_db = params.genomes[params.genome]?.snpeff_db 
+params.snpeff_cache = params.genomes[params.genome]?.snpeff_cache  
 params.tools = params.genomes[params.genome]?.tools
 params.step = params.genomes[params.genome]?.step
 params.bam_file = params.genomes[params.genome]?.bam_file
@@ -64,7 +65,7 @@ if (params.help) {
 }
 
 log.info """\
-      WGS PİPELİNE
+ Multiple-Variant-Call-Pipeline
 ================================
 Reference        : ${params.ref}
 Reads            : ${params.reads}
@@ -90,7 +91,6 @@ include { VAR_RECAL } from './modules/variant-recalibrate.nf'
 include { APPLY_VQSR } from './modules/apply-vqsr.nf'
 include { VARIANT_FILTER } from './modules/variant-filteration.nf'
 include { GATK_INDEX } from './modules/gatk4-index.nf'
-include { SNPEFF_DB } from './modules/snpeff-db.nf'
 include { SNPEFF } from './modules/snpeff.nf'
 
 
@@ -176,8 +176,7 @@ workflow {
 
     if(params.step.split(',').contains('annotate'))
     {
-        SNPEFF_DB(params.snpeff_db)
-        SNPEFF(params.ref, params.fasta_index, params.dict, vcf_annotation_ch, vcf_index_ch, SNPEFF_DB.out.snpeff_cache, params.snpeff_db)
+        SNPEFF(params.ref, params.fasta_index, params.dict, vcf_annotation_ch, vcf_index_ch, params.snpeff_cache, params.snpeff_db)
     }
 
 

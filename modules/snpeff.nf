@@ -12,7 +12,6 @@ process SNPEFF {
     path snpeff_cache
     val snpeff_db
 
-
     output:
     path "*.ann.vcf"
     path "*.csv"
