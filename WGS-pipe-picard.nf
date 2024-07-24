@@ -92,7 +92,7 @@ include { APPLY_VQSR } from './modules/apply-vqsr.nf'
 include { VARIANT_FILTER } from './modules/variant-filteration.nf'
 include { GATK_INDEX } from './modules/gatk4-index.nf'
 include { SNPEFF } from './modules/snpeff.nf'
-
+include { ENSEMBL_VEP } from './modules/enesembl.nf'
 
 workflow {
     if(!params.ref){ //ref file check
@@ -176,7 +176,7 @@ workflow {
 
     if(params.step.split(',').contains('annotate'))
     {
-        SNPEFF(params.ref, params.fasta_index, params.dict, vcf_annotation_ch, vcf_index_ch, params.snpeff_cache, params.snpeff_db)
+        SNPEFF(params.ref, params.fasta_index, params.dict, vcf_annotation_ch, vcf_index_ch, params.snpeff_db)
     }
 
 

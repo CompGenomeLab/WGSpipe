@@ -9,8 +9,8 @@ process SNPEFF {
     path dict
     path merge_variant
     path merge_variant_idx
-    path snpeff_cache
     val snpeff_db
+    
 
     output:
     path "*.ann.vcf"
@@ -27,7 +27,7 @@ process SNPEFF {
     snpEff \\
 	-Xmx${avail_mem}M \\
         -v ${snpeff_db} \\
-        -dataDir ${snpeff_cache} \\
+        -dataDir ${launchDir}/snpeff-data \\
         -csvStats ${merge_variant.baseName}_variant_snpeff.csv\\
         ${merge_variant} \\
         > ${merge_variant.baseName}_variant_snpeff.ann.vcf
