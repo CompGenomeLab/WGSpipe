@@ -19,7 +19,6 @@ params.interval = params.genomes[params.genome]?.interval
 params.indel = params.genomes[params.genome]?.indel
 params.indel_idx = params.genomes[params.genome]?.indel_idx
 params.snpeff_db = params.genomes[params.genome]?.snpeff_db 
-params.snpeff_cache = params.genomes[params.genome]?.snpeff_cache  
 params.tools = params.genomes[params.genome]?.tools
 params.step = params.genomes[params.genome]?.step
 params.bam_file = params.genomes[params.genome]?.bam_file
