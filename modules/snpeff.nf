@@ -9,21 +9,29 @@ process SNPEFF {
     path dict
     path merge_variant
     path merge_variant_idx
-    path snpeff_db
+    path snpeff_cache
+    val snpeff_db
+
 
     output:
     path "*.ann.vcf"
     path "*.csv"
 
     script:
+    def avail_mem = 6144
+    if (!task.memory) {
+        log.info '[snpEff] Available memory not known - defaulting to 6GB. Specify process memory requirements to change this.'
+    } else {
+	avail_mem = (task.memory.mega*0.8).intValue()
+    }
     """
     snpEff \\
-        -Xmx${avail_mem}M \\
+	-Xmx${avail_mem}M \\
         -v ${snpeff_db} \\
-        -dataDir \${PWD}/tmp \\
+        -dataDir ${snpeff_cache} \\
         -csvStats ${merge_variant.baseName}_variant_snpeff.csv\\
         ${merge_variant} \\
-        > ${merge_variant.baseName}_variant_snpeff.ann.vcf 
+        > ${merge_variant.baseName}_variant_snpeff.ann.vcf
     """
 }
 
