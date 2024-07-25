@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Configure conda channels
+# Configure conda channels 
 conda config --add channels defaults
 conda config --add channels bioconda
 conda config --add channels conda-forge
@@ -23,6 +23,12 @@ singularity build Singularity/happy.sif docker://jmcdani20/hap.py:v0.3.12
 singularity build Singularity/multiqc.sif docker://staphb/multiqc
 singularity build Singularity/sam.sif docker://dukegcb/bwa-samtools
 singularity build Singularity/snpeff.sif docker://quay.io/biocontainers/snpeff:5.1--hdfd78af_2
+singularity build Singularity/ensembl.sif docker://ensemblorg/ensembl-vep
+
+#Installin snpeff dataset according to the genome version
+singularity shell snpeff.sif
+mkdir snpeff-data
+snpEff download -dataDir snpeff-data GRCh38.105
 
 #chmod +x sif.sh
 #run ./install_singularity_tools.sh

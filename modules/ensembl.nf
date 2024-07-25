@@ -1,32 +1,31 @@
 process ENSEMBL_VEP {
-    publishDir "${params.outdir}/annotation/${merge_variant.baseName}_ensembl_vep", mode: 'copy'
+    publishDir "${params.outdir}/annotation/${vcf.baseName}_ensembl_vep", mode: 'copy'
 
     input:
     path  vcf //generated variant files
+    path  vcf_idx
     val   genome //GRCh38
     val   species //homo_sapiens
     val   cache_version //GRCh38 version
-    path  ensembl_cache //directory of the database
     path  ref
+    path  fasta_index
+    path  dict
     
     output:
     path("*.vcf.gz"), emit: vcf
-    path("*.tab.gz"), emit: tab
-    path("*.json.gz"), emit: json
-    path "*.summary.html", emit: report
+    path ("*.summary.html"), optional: true, emit: report
 
     script:
-    def file_extension = args.contains("--vcf") ? 'vcf' : args.contains("--json")? 'json' : args.contains("--tab")? 'tab' : 'vcf'
     """
     vep \\
         -i $vcf \\
-        -o  ${vcf.baseName}_ensembl_vep.${file_extension}.gz \\
+        --stats_file  ${vcf.baseName}_ensembl_vep.summary.html \\
+        -o ${vcf.baseName}_ensembl_vep.vcf.gz \\
         --fasta ${ref} \\
+        --database \\
         --assembly ${genome} \\
         --species ${species} \\
-        --cache \\
         --cache_version ${cache_version} \\
-        --dir_cache ${ensembl_cache} \\
         --fork ${task.cpus}
     """
 }

@@ -26,6 +26,8 @@ params.bam_file_idx = params.genomes[params.genome]?.bam_file_idx
 params.vep_cache_version = params.genomes[params.genome]?.vep_cache_version
 params.vep_genome = params.genomes[params.genome]?.vep_genome            
 params.vep_species = params.genomes[params.genome]?.vep_species 
+params.vcf = params.genomes[params.genome]?.vcf
+params.vcf_idx = params.genomes[params.genome]?.vcf_idx
 
 params.benchmark = "${launchDir}/nf-core/benchmark/HG003_GRCh38_1_22_v4.2.1_benchmark.vcf.gz"
 params.bench_idx = "${launchDir}/nf-core/benchmark/HG003_GRCh38_1_22_v4.2.1_benchmark.vcf.gz.tbi"
@@ -149,9 +151,7 @@ workflow {
           vcf_htvc = VARIANT_CALLING.out.vcf_htvc
           vcf_dv = VARIANT_CALLING.out.vcf_dv
           vcf_fb = VARIANT_CALLING.out.vcf_fb
-
-          HAPPY(params.ref, params.fasta_index, params.benchmark, params.bench_idx, params.bench_bed, vcf_dv)
-          
+      
           VAR_RECAL(params.ref, params.fasta_index, params.dict, vcf_htvc, params.dbsnp, params.thousandG, params.dbsnp_idx, params.thousandG_idx, params.hapmap, params.hapmap_idx, params.omni, params.omni_idx)
           APPLY_VQSR(params.ref,params.fasta_index, params.dict, vcf_htvc, VAR_RECAL.out.var_recal, VAR_RECAL.out.tranches, VAR_RECAL.out.var_recal_idx)
           VARIANT_FILTER(params.ref, params.fasta_index, params.dict, APPLY_VQSR.out.htvc_recalibrated, APPLY_VQSR.out.htvc_index_recalibrated)
@@ -161,6 +161,8 @@ workflow {
           vcf_annotation_ch = vcf_annotation_ch.mix(VARIANT_FILTER.out.htvc_filtered)
           vcf_annotation_ch = vcf_annotation_ch.mix(VARIANT_CALLING.out.vcf_dv)
           vcf_annotation_ch = vcf_annotation_ch.mix(VARIANT_CALLING.out.vcf_fb)
+
+          HAPPY(params.ref, params.fasta_index, params.benchmark, params.bench_idx, params.bench_bed, vcf_annotation_ch)
   
           vcf_to_idx = Channel.empty() //vcf files that needs to be indexed 
           vcf_to_idx = vcf_to_idx.mix(vcf_htvc)
@@ -171,11 +173,26 @@ workflow {
           vcf_index_ch = GATK_INDEX.out.vcf_idx //idx files transferred to a index_ch
               
         }
+    }else if (params.step.split(',').contains('annotate')) {
+        // If preprocessing is skipped, use input BAM file
+        if (!params.vcf || !params.vcf_idx) {
+            exit 1, "VCF file of a genome not specified! Please, provide --vcf and --vcf_idx"
+        }
+        vcf_annotation_ch = Channel.fromPath(params.vcf)
+        vcf_index_ch = Channel.fromPath(params.vcf_idx)
     }
 
     if(params.step.split(',').contains('annotate'))
     {
-        SNPEFF(params.ref, params.fasta_index, params.dict, vcf_annotation_ch, vcf_index_ch, params.snpeff_db)
+        if (params.tools.split(',').contains('snpeff') || params.tools.split(',').contains('vep')){
+            if (params.tools.split(',').contains('snpeff'))
+            {
+               SNPEFF(params.ref, params.fasta_index, params.dict, vcf_annotation_ch, vcf_index_ch, params.snpeff_db)
+            }
+            if (params.tools.split(',').contains('vep')) {
+               ENSEMBL_VEP(vcf_annotation_ch, vcf_index_ch, params.vep_genome, params.vep_species, params.vep_cache_version, params.ref, params.fasta_index, params.dict)
+            }  
+        }
     }
 
 

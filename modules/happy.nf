@@ -1,5 +1,5 @@
 process HAPPY{
-    publishDir "${params.outdir}/happy_analysis/", mode: "copy"
+    publishDir "${params.outdir}/happy_analysis/${vcf_file.getBaseName()}", mode: "copy"
     
     tag {vcf_file.getBaseName()}
 
