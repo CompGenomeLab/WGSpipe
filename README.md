@@ -1,5 +1,7 @@
 # **WGS PIPELINE WITH GATK BEST PRACTICES**
 
+Workshop for the pipeline is provided in this link: https://hackmd.io/@P7kOjMPmRx6ueC_wK51d4w/HkuPG_SIA
+
 This report is for training purposes on what steps should have been taken for GATK best practices. For constructing of the WGS pipeline GATK’s best practice workflow take into consideration with additional genomic analysis and annotation tools. The practices are written in Nextflow DSL2 workflow management language.
 
 A whole genome sequence data should be picked from genomic databases such as 1000 Genomes Project or SRA database. Download data:
