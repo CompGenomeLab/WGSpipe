@@ -1,5 +1,5 @@
 process ENSEMBL_VEP {
-    publishDir "${params.outdir}/annotation/${vcf.baseName}_ensembl_vep", mode: 'copy'
+    publishDir "${params.outdir}/annotation/ensembl_vep/${vcf.baseName}_vep", mode: 'copy'
 
     input:
     path  vcf //generated variant files
@@ -10,22 +10,23 @@ process ENSEMBL_VEP {
     path  ref
     path  fasta_index
     path  dict
-    
+
     output:
-    path("*.vcf.gz"), emit: vcf
-    path ("*.summary.html"), optional: true, emit: report
+    path("*.vcf"), emit: vcf
+    path("*.summary.html"), optional: true, emit: report
 
     script:
     """
     vep \\
-        -i $vcf \\
+	-i $vcf \\
+        -o  ${vcf.baseName}_ensembl_vep.vcf \\
         --stats_file  ${vcf.baseName}_ensembl_vep.summary.html \\
-        -o ${vcf.baseName}_ensembl_vep.vcf.gz \\
         --fasta ${ref} \\
-        --database \\
         --assembly ${genome} \\
         --species ${species} \\
+        --cache \\
         --cache_version ${cache_version} \\
+        --dir_cache ${launchDir}/vep-data \\
         --fork ${task.cpus}
     """
 }

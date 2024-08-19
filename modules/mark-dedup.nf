@@ -14,7 +14,6 @@ process MARK_DEDUP {
     path('*metrics')
     
     script:
-    def avail_mem = (task.memory.mega*0.8).intValue()
     """
     gatk MarkDuplicatesSpark \
     -I ${bam_file} \
@@ -24,12 +23,4 @@ process MARK_DEDUP {
     """
 }
 
- gatk MarkDuplicatesSpark \
-    -I HG001.novaseq.pcr-free.30x.dedup.grch38.bam \
-    -O test_dedup.bam \
-    -M test_dedup.metrics \
-    --tmp-dir /cta/users/baharsevgin/tmp
-    --conf 'spark.executor.cores=6'
-    
-
-/cta/users/baharsevgin/ENS491-pipeline/results_HG003_WGS/sam-to-bam
+ 

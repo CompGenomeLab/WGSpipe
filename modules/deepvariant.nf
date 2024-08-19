@@ -8,19 +8,19 @@ process DEEPVARIANT {
     path applyed_bqsr_bai
     path fasta_index
     path dict
-    path wes_bed
 
     output:
     path('dv_variants.vcf'), emit: dv
 
     script:
+    def modelType = params.wes ? "WES" : "WGS"
     """
     /opt/deepvariant/bin/run_deepvariant \
-        --model_type=WGS \
+        --model_type=${modelType} \
         --ref=${ref} \
         --reads=${applyed_bqsr_bam} \
         --output_vcf=dv_variants.vcf \
-        --regions ${wes_b} \
+        --regions ${launchDir}/data/idt_capture.grch38.bed \
         --num_shards=${task.cpus}
     """
 }

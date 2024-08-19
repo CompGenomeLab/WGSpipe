@@ -1,6 +1,6 @@
 process GATK_INDEX{
     tag "Indexing VCF files" 
-    publishDir "${params.outdir}/gatk4-index-vcffiles", mode: 'copy'
+    publishDir "${params.outdir}/gatk4-index-vcf", mode: 'copy'
 
     input:
     path vcf

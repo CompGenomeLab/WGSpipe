@@ -1,6 +1,6 @@
 process VAR_RECAL {
     tag "Variant Recalibration"
-    publishDir "${params.outdir}/haplotypecaller", mode: 'copy'
+    publishDir "${params.outdir}/htvc_call", mode: 'copy'
 
     input:
     path ref

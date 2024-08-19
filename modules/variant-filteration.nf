@@ -1,6 +1,6 @@
 process VARIANT_FILTER {
 
-    publishDir "${params.outdir}/haplotypecaller", mode: 'copy'
+    publishDir "${params.outdir}/htvc_call", mode: 'copy'
 
     input:
     path ref

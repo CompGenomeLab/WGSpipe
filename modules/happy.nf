@@ -21,6 +21,7 @@ process HAPPY{
     ${vcf_file} \
     -r ${ref} \
     -f ${refvcf_bed} \
+    -T ${launchDir}/data/idt_capture.grch38.bed \
     -o ${vcf_file.getBaseName()} \
     --engine=vcfeval \
     --pass-only \

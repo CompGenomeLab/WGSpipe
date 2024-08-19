@@ -38,5 +38,27 @@ wget -P "$data_dir" https://storage.googleapis.com/genomics-public-data/resource
 
 wget -P "$data_dir" ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/hg38/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz
 
-wget -P "$data_dir"ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/hg38/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz.tbi
+wget -P "$data_dir" ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/hg38/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz.tbi
+
+
+# Define the directory name
+VEP_DATA_DIR="vep-data"
+
+# Create the directory
+mkdir -p $VEP_DATA_DIR
+
+# Change to the directory
+cd $VEP_DATA_DIR
+
+# Download the VEP cache file
+curl -O ftp://ftp.ensembl.org/pub/release-110/variation/indexed_vep_cache/homo_sapiens_vep_110_GRCh38.tar.gz
+
+# Extract the tar.gz file
+tar xzf homo_sapiens_vep_110_GRCh38.tar.gz
+
+# Optionally, remove the tar.gz file after extraction
+rm homo_sapiens_vep_110_GRCh38.tar.gz
+
+echo "VEP cache downloaded and extracted to $VEP_DATA_DIR"
+
 
