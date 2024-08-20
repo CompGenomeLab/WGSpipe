@@ -40,6 +40,7 @@ wget -P "$data_dir" ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/hg38
 
 wget -P "$data_dir" ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/hg38/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz.tbi
 
+wget -P "$data_dir" "https://storage.googleapis.com/genomics-public-data/resources/broad/hg38/v0/wgs_calling_regions.hg38.interval_list"
 
 # Define the directory name
 VEP_DATA_DIR="vep-data"
