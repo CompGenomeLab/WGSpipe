@@ -1,6 +1,10 @@
-# **WGS PIPELINE WITH GATK BEST PRACTICES**
+# **HOW TO RUN THE WGS PIPELINE WITH GATK BEST PRACTICES**
 
-Workshop for the pipeline is provided in this link: https://hackmd.io/@P7kOjMPmRx6ueC_wK51d4w/HkuPG_SIA
+
+This training will enable you to run the pipeline: https://hackmd.io/@P7kOjMPmRx6ueC_wK51d4w/HkuPG_SIA
+
+
+# **HOW TO CREATE A WGS PIPELINE WITH GATK BEST PRACTICES**
 
 This report is for training purposes on what steps should have been taken for GATK best practices. For constructing of the WGS pipeline GATK’s best practice workflow take into consideration with additional genomic analysis and annotation tools. The practices are written in Nextflow DSL2 workflow management language.
 
