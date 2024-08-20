@@ -45,18 +45,28 @@ def helpMessage() {
     
     The typical command for running the pipeline is as follows:
     
-    nextflow run WGS-pipeline.nf --reads '*_R{1,2}.fastq.gz' --ref "*.fasta"
+    nextflow run WGS-pipe-picard.nf --reads "*_R{1,2}.fastq.gz" --outidr "/path/to/outdir" --ref "*.fasta"
+
     Mandatory arguments:
       --reads                      Path to input data (must be surrounded with quotes).
       --ref                        Path to human Fasta reference (must be surrounded with quotes).
+      --outdir                     The output directory where the results will be saved (must be surrounded with quotes).
     References
       --fasta_index                If reference index files exists.
       --dict                       If reference dictionary files exists.
     Other options:
-      --outdir                     The output directory where the results will be saved (must be surrounded with quotes).
       --step                       Define the steps you wanted to use. Default all included. (must be surrounded with quotes)
       --vc_tools                   Define the tools you wanted to use in the steps of variant calling. Default all included. (must be surrounded with quotes)
       --ann_tools                  Define the tools you wanted to use in the steps of annotation. Default all included. (must be surrounded with quotes)
+    
+    Variant calling options:
+      --wes                        Allows you to turn the pipeline to run WES data. A boolean parameter. Default is false (to run WGS data).
+      
+    Annotation options:
+      --snpeff_db                  Provide the snpeff genome version for tool to recognize the database.
+      --vep_cache_version          Database cache version must be provided.
+      --vep_species                Database specie version must be provided.
+      --vep_genome                 Database genome version must be provided.
     """.stripIndent()
 }
 
