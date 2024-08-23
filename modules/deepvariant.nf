@@ -20,7 +20,6 @@ process DEEPVARIANT {
         --ref=${ref} \
         --reads=${applyed_bqsr_bam} \
         --output_vcf=dv_variants.vcf \
-        --regions ${launchDir}/data/idt_capture.grch38.bed \
         --num_shards=${task.cpus}
     """
 }
